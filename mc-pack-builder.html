@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MC Pack Builder</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -426,6 +429,145 @@
     /* Fade in */
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     .fade-in { animation: fadeIn 0.25s ease both; }
+
+    /* ── Project Storage ── */
+    .proj-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .proj-tab {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.83rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .proj-tab.active { background: var(--surface2); border-color: var(--text); color: var(--text); }
+    .proj-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 9px 12px;
+      outline: none;
+      margin-bottom: 10px;
+    }
+    .proj-input:focus { border-color: var(--primary); }
+    .proj-btn-primary {
+      width: 100%;
+      padding: 10px;
+      background: var(--primary);
+      color: #0d1117;
+      border: none;
+      border-radius: var(--r-sm);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .proj-btn-primary:hover:not(:disabled) { background: #56d364; }
+    .proj-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .proj-btn-build {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      color: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: var(--r-sm);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      margin-top: 8px;
+    }
+    .proj-btn-build:hover { background: rgba(121,192,255,0.1); }
+    .proj-btn-sm {
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .proj-btn-sm:hover { border-color: var(--text); color: var(--text); }
+    .proj-info {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .proj-info-name { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .proj-info-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+    .proj-info-label { font-size: 0.8rem; color: var(--muted); flex-shrink: 0; }
+    .proj-info-id { font-size: 0.8rem; color: var(--blue); font-family: 'Consolas','Courier New',monospace; word-break: break-all; }
+    .proj-access-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .proj-badge { font-size: 0.78rem; font-weight: 600; padding: 3px 9px; border-radius: 12px; }
+    .proj-badge-read { background: rgba(139,148,158,0.15); color: var(--muted); }
+    .proj-badge-write { background: rgba(63,185,80,0.15); color: var(--primary); }
+    .proj-empty { color: var(--muted); font-size: 0.87rem; text-align: center; padding: 14px 0; }
+    .proj-file-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+    .proj-file-icon { font-size: 1.6rem; }
+    .proj-file-name { font-size: 0.9rem; font-weight: 500; color: var(--text); }
+    .proj-file-meta { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+    .proj-progress-bar { background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 6px; }
+    .proj-progress-fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.2s; width: 0%; }
+    .proj-progress-label { font-size: 0.82rem; color: var(--muted); }
+    .proj-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      z-index: 1001;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .proj-modal.open { display: flex; }
+    .proj-modal-inner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 28px 28px 24px;
+      max-width: 480px;
+      width: 100%;
+    }
+    .proj-modal-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .proj-modal-sub { font-size: 0.84rem; color: var(--muted); margin-bottom: 16px; line-height: 1.55; }
+    .proj-modal-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin: 12px 0 6px; }
+    .proj-token-box {
+      background: var(--bg);
+      border: 1px solid var(--primary);
+      border-radius: var(--r-sm);
+      padding: 12px 14px;
+      font-family: 'Consolas','Courier New',monospace;
+      font-size: 0.85rem;
+      color: var(--primary);
+      word-break: break-all;
+      margin-bottom: 8px;
+    }
+    .proj-link-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 10px 14px;
+      font-family: 'Consolas','Courier New',monospace;
+      font-size: 0.82rem;
+      color: var(--blue);
+      word-break: break-all;
+      margin-bottom: 8px;
+    }
+    .proj-modal-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .proj-modal-err { color: var(--err); font-size: 0.82rem; margin-top: 6px; display: none; }
   </style>
 </head>
 <body>
@@ -566,6 +708,66 @@
 }</pre>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Project Storage -->
+  <div class="card" id="projCard">
+    <div class="card-title">☁ Облачный проект</div>
+
+    <!-- Landing: create / join -->
+    <div id="projLanding">
+      <div class="proj-tabs">
+        <button class="proj-tab active" id="projTabCreate">Создать проект</button>
+        <button class="proj-tab" id="projTabJoin">Войти по ID</button>
+      </div>
+      <div id="projPanelCreate">
+        <input class="proj-input" id="projNameInput" type="text" placeholder="Название проекта" maxlength="60">
+        <button class="proj-btn-primary" id="projCreateBtn">Создать</button>
+      </div>
+      <div id="projPanelJoin" style="display:none">
+        <input class="proj-input" id="projJoinInput" type="text" placeholder="ID проекта">
+        <button class="proj-btn-primary" id="projJoinBtn">Открыть</button>
+      </div>
+    </div>
+
+    <!-- Project view -->
+    <div id="projView" style="display:none">
+      <div class="proj-info">
+        <div class="proj-info-name" id="projViewName"></div>
+        <div class="proj-info-row">
+          <span class="proj-info-label">ID:</span>
+          <span class="proj-info-id" id="projViewId"></span>
+        </div>
+        <div class="proj-info-row">
+          <span class="proj-info-label">Версия пака:</span>
+          <span class="proj-info-id" id="projVersionBadge"></span>
+        </div>
+        <div class="proj-access-row">
+          <span class="proj-badge proj-badge-read" id="projAccessBadge">🔒 Только чтение</span>
+          <button class="proj-btn-sm" id="projUnlockBtn">Ввести токен</button>
+          <button class="proj-btn-sm" id="projCopyLinkBtn">Копировать ссылку</button>
+          <button class="proj-btn-sm" id="projLeaveBtn">Выйти</button>
+        </div>
+      </div>
+
+      <div id="projNoFile" class="proj-empty">Исходный ZIP не загружен</div>
+      <div id="projFileInfo" class="proj-file-row" style="display:none">
+        <span class="proj-file-icon">📦</span>
+        <div>
+          <div class="proj-file-name" id="projFileName"></div>
+          <div class="proj-file-meta" id="projFileMeta"></div>
+        </div>
+      </div>
+
+      <button class="proj-btn-primary" id="projUploadBtn" style="display:none;margin-top:10px">⬆ Загрузить ZIP</button>
+      <input type="file" accept=".zip" id="projFileInput" style="display:none">
+      <button class="proj-btn-build" id="projBuildBtn" style="display:none">⚙ Собрать из проекта</button>
+
+      <div id="projProgressArea" style="display:none;margin-top:10px">
+        <div class="proj-progress-bar"><div class="proj-progress-fill" id="projProgressFill"></div></div>
+        <div class="proj-progress-label" id="projProgressLabel">...</div>
+      </div>
     </div>
   </div>
 
@@ -1445,6 +1647,306 @@
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
     return many;
   }
+
+  // ── Firebase Project Storage ──────────────────────────
+  (function() {
+    firebase.initializeApp({
+      apiKey:            'AIzaSyB7IkXU1bGGfqBhNRQJqQomEICpVxXa3nY',
+      authDomain:        'packbuilder-445d3.firebaseapp.com',
+      projectId:         'packbuilder-445d3',
+      storageBucket:     'packbuilder-445d3.firebasestorage.app',
+      messagingSenderId: '995779167487',
+      appId:             '1:995779167487:web:b652f45b3094133800f8ca'
+    });
+    const db      = firebase.firestore();
+    const storage = firebase.storage();
+
+    let currentProjectId   = null;
+    let currentProjectData = null;
+    let hasWriteAccess     = false;
+    let projectUnsubscribe = null;
+
+    // ── Utils ──
+    async function sha256(str) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function formatBytes(n) {
+      if (!n) return '';
+      if (n < 1024)    return n + ' B';
+      if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+      return (n / 1048576).toFixed(2) + ' MB';
+    }
+
+    function getProjectLink(id) {
+      return location.origin + location.pathname + '?p=' + id;
+    }
+
+    // ── Create project ──
+    async function createProject(name) {
+      const projectId  = crypto.randomUUID();
+      const writeToken = crypto.randomUUID();
+      const tokenHash  = await sha256(writeToken);
+      await db.collection('projects').doc(projectId).set({
+        name:           name || 'Без названия',
+        writeTokenHash: tokenHash,
+        createdAt:      firebase.firestore.FieldValue.serverTimestamp(),
+        version:        activeVersion,
+        fileName:       null,
+        fileSize:       null,
+        uploadedAt:     null
+      });
+      localStorage.setItem('proj_token_' + projectId, writeToken);
+      return { projectId, writeToken };
+    }
+
+    // ── Load project ──
+    async function loadProject(projectId) {
+      if (projectUnsubscribe) projectUnsubscribe();
+      currentProjectId   = projectId;
+      hasWriteAccess     = false;
+      const storedToken  = localStorage.getItem('proj_token_' + projectId);
+      const url = new URL(location.href);
+      url.searchParams.set('p', projectId);
+      history.replaceState({}, '', url.toString());
+      projectUnsubscribe = db.collection('projects').doc(projectId).onSnapshot(async snap => {
+        if (!snap.exists) { alert('Проект не найден'); leaveProject(); return; }
+        currentProjectData = snap.data();
+        if (storedToken) {
+          const hash = await sha256(storedToken);
+          hasWriteAccess = (hash === currentProjectData.writeTokenHash);
+        } else {
+          hasWriteAccess = false;
+        }
+        renderProjectView();
+      }, err => { alert('Ошибка Firestore: ' + err.message); });
+      showProjectView();
+    }
+
+    // ── Render project view ──
+    function renderProjectView() {
+      if (!currentProjectData) return;
+      document.getElementById('projViewName').textContent = currentProjectData.name;
+      document.getElementById('projViewId').textContent   = currentProjectId;
+      const versionLabels = { 'java-old': 'Java 1.16–1.21.3', 'java-new': 'Java 1.21.4+', 'bedrock': 'Bedrock' };
+      document.getElementById('projVersionBadge').textContent = versionLabels[currentProjectData.version] || currentProjectData.version || '—';
+      const badge     = document.getElementById('projAccessBadge');
+      const unlockBtn = document.getElementById('projUnlockBtn');
+      if (hasWriteAccess) {
+        badge.textContent  = '✏ Запись';
+        badge.className    = 'proj-badge proj-badge-write';
+        unlockBtn.style.display = 'none';
+      } else {
+        badge.textContent  = '🔒 Только чтение';
+        badge.className    = 'proj-badge proj-badge-read';
+        unlockBtn.style.display = '';
+      }
+      document.getElementById('projUploadBtn').style.display = hasWriteAccess ? '' : 'none';
+      if (currentProjectData.fileName) {
+        document.getElementById('projNoFile').style.display   = 'none';
+        document.getElementById('projFileInfo').style.display = 'flex';
+        document.getElementById('projFileName').textContent   = currentProjectData.fileName;
+        const ts = currentProjectData.uploadedAt
+          ? new Date(currentProjectData.uploadedAt.toDate()).toLocaleString('ru') : '';
+        document.getElementById('projFileMeta').textContent =
+          formatBytes(currentProjectData.fileSize) + (ts ? ' · ' + ts : '');
+        document.getElementById('projBuildBtn').style.display = '';
+      } else {
+        document.getElementById('projNoFile').style.display   = '';
+        document.getElementById('projFileInfo').style.display = 'none';
+        document.getElementById('projBuildBtn').style.display = 'none';
+      }
+    }
+
+    function showProjectView() {
+      document.getElementById('projLanding').style.display = 'none';
+      document.getElementById('projView').style.display    = '';
+    }
+
+    function leaveProject() {
+      if (projectUnsubscribe) { projectUnsubscribe(); projectUnsubscribe = null; }
+      currentProjectId = null; currentProjectData = null; hasWriteAccess = false;
+      const url = new URL(location.href);
+      url.searchParams.delete('p');
+      history.replaceState({}, '', url.toString());
+      document.getElementById('projLanding').style.display = '';
+      document.getElementById('projView').style.display    = 'none';
+    }
+
+    // ── Upload ZIP ──
+    async function uploadZipToProject(file) {
+      if (!hasWriteAccess || !currentProjectId) return;
+      const progressArea = document.getElementById('projProgressArea');
+      const fill         = document.getElementById('projProgressFill');
+      const label        = document.getElementById('projProgressLabel');
+      progressArea.style.display = '';
+      fill.style.width = '0%';
+      try {
+        const ref  = storage.ref('projects/' + currentProjectId + '/source.zip');
+        const task = ref.put(file);
+        task.on('state_changed', snap => {
+          const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+          fill.style.width = pct + '%';
+          label.textContent = 'Загрузка: ' + pct + '%';
+        });
+        await task;
+        await db.collection('projects').doc(currentProjectId).update({
+          fileName:   file.name,
+          fileSize:   file.size,
+          uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          version:    activeVersion
+        });
+        fill.style.width  = '100%';
+        label.textContent = 'Загружено!';
+        setTimeout(() => { progressArea.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+      } catch (err) {
+        progressArea.style.display = 'none';
+        alert('Ошибка загрузки: ' + err.message);
+      }
+    }
+
+    // ── Build from project ──
+    async function buildFromProject() {
+      if (!currentProjectId || !currentProjectData || !currentProjectData.fileName) return;
+      const progressArea = document.getElementById('projProgressArea');
+      const fill         = document.getElementById('projProgressFill');
+      const label        = document.getElementById('projProgressLabel');
+      progressArea.style.display = '';
+      fill.style.width  = '30%';
+      label.textContent = 'Скачивание из облака...';
+      try {
+        const ref   = storage.ref('projects/' + currentProjectId + '/source.zip');
+        const dlUrl = await ref.getDownloadURL();
+        const resp  = await fetch(dlUrl);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const blob = await resp.blob();
+        fill.style.width  = '100%';
+        label.textContent = 'Готово, запускаю сборку...';
+        setTimeout(() => { progressArea.style.display = 'none'; fill.style.width = '0%'; }, 800);
+        // Switch to project version
+        const projVersion = currentProjectData.version || 'java-old';
+        const tabMap = { 'java-old': 'tab-java-old', 'java-new': 'tab-java-new', 'bedrock': 'tab-bedrock' };
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        const tabEl = document.getElementById(tabMap[projVersion]);
+        if (tabEl) tabEl.classList.add('active');
+        activeVersion = projVersion;
+        document.getElementById('versionCard').style.display = projVersion === 'bedrock' ? '' : 'none';
+        // Trigger existing build pipeline
+        selectedFile = blob;
+        document.getElementById('buildBtn').disabled = false;
+        document.getElementById('buildBtn').click();
+      } catch (err) {
+        progressArea.style.display = 'none';
+        alert('Ошибка: ' + err.message);
+      }
+    }
+
+    // ── Unlock write access ──
+    async function unlockWriteAccess(token) {
+      if (!currentProjectData) return false;
+      const hash = await sha256(token.trim());
+      if (hash === currentProjectData.writeTokenHash) {
+        localStorage.setItem('proj_token_' + currentProjectId, token.trim());
+        hasWriteAccess = true;
+        renderProjectView();
+        return true;
+      }
+      return false;
+    }
+
+    // ── Token modal ──
+    function showTokenModal(projectId, writeToken) {
+      document.getElementById('tokenDisplay').textContent     = writeToken;
+      document.getElementById('tokenProjectLink').textContent = getProjectLink(projectId);
+      document.getElementById('tokenModal').classList.add('open');
+    }
+
+    // ── Event bindings ──
+    document.getElementById('projTabCreate').addEventListener('click', () => {
+      document.getElementById('projTabCreate').classList.add('active');
+      document.getElementById('projTabJoin').classList.remove('active');
+      document.getElementById('projPanelCreate').style.display = '';
+      document.getElementById('projPanelJoin').style.display   = 'none';
+    });
+    document.getElementById('projTabJoin').addEventListener('click', () => {
+      document.getElementById('projTabJoin').classList.add('active');
+      document.getElementById('projTabCreate').classList.remove('active');
+      document.getElementById('projPanelJoin').style.display   = '';
+      document.getElementById('projPanelCreate').style.display = 'none';
+    });
+    document.getElementById('projCreateBtn').addEventListener('click', async () => {
+      const name = document.getElementById('projNameInput').value.trim() || 'Без названия';
+      const btn  = document.getElementById('projCreateBtn');
+      btn.disabled = true; btn.textContent = 'Создаю...';
+      try {
+        const { projectId, writeToken } = await createProject(name);
+        await loadProject(projectId);
+        showTokenModal(projectId, writeToken);
+      } catch (err) { alert('Ошибка: ' + err.message); }
+      finally { btn.disabled = false; btn.textContent = 'Создать'; }
+    });
+    document.getElementById('projJoinBtn').addEventListener('click', async () => {
+      const id  = document.getElementById('projJoinInput').value.trim();
+      if (!id) return;
+      const btn = document.getElementById('projJoinBtn');
+      btn.disabled = true; btn.textContent = 'Открываю...';
+      try { await loadProject(id); }
+      catch (err) { alert('Ошибка: ' + err.message); btn.disabled = false; btn.textContent = 'Открыть'; }
+    });
+    document.getElementById('projCopyLinkBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(getProjectLink(currentProjectId));
+      const btn = document.getElementById('projCopyLinkBtn');
+      btn.textContent = 'Скопировано!';
+      setTimeout(() => { btn.textContent = 'Копировать ссылку'; }, 2000);
+    });
+    document.getElementById('projLeaveBtn').addEventListener('click', leaveProject);
+    document.getElementById('projUnlockBtn').addEventListener('click', () => {
+      document.getElementById('unlockTokenInput').value = '';
+      document.getElementById('unlockError').style.display = 'none';
+      document.getElementById('unlockModal').classList.add('open');
+    });
+    document.getElementById('projUploadBtn').addEventListener('click', () => {
+      document.getElementById('projFileInput').click();
+    });
+    document.getElementById('projFileInput').addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      await uploadZipToProject(f); e.target.value = '';
+    });
+    document.getElementById('projBuildBtn').addEventListener('click', buildFromProject);
+
+    // Token modal buttons
+    document.getElementById('tokenCopyBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('tokenDisplay').textContent);
+      const btn = document.getElementById('tokenCopyBtn');
+      btn.textContent = 'Скопировано!';
+      setTimeout(() => { btn.textContent = 'Копировать токен'; }, 2000);
+    });
+    document.getElementById('tokenCopyLinkBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('tokenProjectLink').textContent);
+      const btn = document.getElementById('tokenCopyLinkBtn');
+      btn.textContent = 'Скопировано!';
+      setTimeout(() => { btn.textContent = 'Копировать ссылку'; }, 2000);
+    });
+    document.getElementById('tokenOkBtn').addEventListener('click', () => {
+      document.getElementById('tokenModal').classList.remove('open');
+    });
+
+    // Unlock modal buttons
+    document.getElementById('unlockSubmitBtn').addEventListener('click', async () => {
+      const token = document.getElementById('unlockTokenInput').value;
+      const ok = await unlockWriteAccess(token);
+      if (ok) document.getElementById('unlockModal').classList.remove('open');
+      else    document.getElementById('unlockError').style.display = '';
+    });
+    document.getElementById('unlockCancelBtn').addEventListener('click', () => {
+      document.getElementById('unlockModal').classList.remove('open');
+    });
+
+    // Auto-load project from URL param
+    const urlPid = new URLSearchParams(location.search).get('p');
+    if (urlPid) loadProject(urlPid);
+  })();
 </script>
 
 <!-- Conflict resolution modal -->
@@ -1454,6 +1956,39 @@
     <div style="font-size:1rem;font-weight:600;margin-bottom:6px;color:var(--text)" id="conflictFilename"></div>
     <div style="font-size:.85rem;color:var(--muted);margin-bottom:18px">Эта текстура используется в нескольких местах. Куда направить этот файл?</div>
     <div id="conflictOptions" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<!-- Token modal — shown once after project creation -->
+<div class="proj-modal" id="tokenModal">
+  <div class="proj-modal-inner">
+    <div class="proj-modal-title">Проект создан!</div>
+    <div class="proj-modal-sub">Сохраните токен записи — он показывается <b>только один раз</b>. Без него загружать новые ZIP в проект не получится.</div>
+    <div class="proj-modal-label">Токен записи</div>
+    <div class="proj-token-box" id="tokenDisplay"></div>
+    <div class="proj-modal-btns">
+      <button class="proj-btn-primary" id="tokenCopyBtn" style="flex:1">Копировать токен</button>
+    </div>
+    <div class="proj-modal-label">Ссылка на проект (для всей команды)</div>
+    <div class="proj-link-box" id="tokenProjectLink"></div>
+    <div class="proj-modal-btns" style="margin-top:4px">
+      <button class="proj-btn-sm" id="tokenCopyLinkBtn">Копировать ссылку</button>
+      <button class="proj-btn-sm" id="tokenOkBtn" style="margin-left:auto">Я сохранил токен ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Unlock write access modal -->
+<div class="proj-modal" id="unlockModal">
+  <div class="proj-modal-inner">
+    <div class="proj-modal-title">Разблокировать запись</div>
+    <div class="proj-modal-sub">Введите токен записи, чтобы получить возможность загружать ZIP-файлы в проект.</div>
+    <input class="proj-input" id="unlockTokenInput" type="password" placeholder="Токен записи" style="margin-bottom:4px">
+    <div class="proj-modal-err" id="unlockError">Неверный токен</div>
+    <div class="proj-modal-btns" style="margin-top:14px">
+      <button class="proj-btn-primary" id="unlockSubmitBtn" style="flex:1">Подтвердить</button>
+      <button class="proj-btn-sm" id="unlockCancelBtn">Отмена</button>
+    </div>
   </div>
 </div>
 </body>
