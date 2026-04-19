@@ -740,6 +740,35 @@
 <!-- ── Java → Bedrock page ── -->
 <div class="wrap" id="page-jb" style="display:none">
 
+  <!-- Description -->
+  <div class="card">
+    <div class="card-title">Как пользоваться</div>
+    <div style="font-size:0.88rem;color:var(--muted);line-height:1.7">
+      Используй этот инструмент, если уже есть готовый Java ресурс-пак (1.21.4+) и его нужно перенести под Bedrock Edition.
+    </div>
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;font-size:0.87rem">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="color:var(--primary);font-weight:700;flex-shrink:0">1.</span>
+        <span style="color:var(--muted)">Загрузи готовый <b style="color:var(--text)">Java 1.21.4+ ресурс-пак</b> — обычный ZIP-архив, собранный через «Сборщик паков».</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="color:var(--primary);font-weight:700;flex-shrink:0">2.</span>
+        <div style="color:var(--muted)">
+          Загрузи ZIP с <b style="color:var(--text)">Bedrock-моделями</b>. Ожидаемая структура архива:
+          <div class="file-tree" style="margin-top:8px;line-height:1.8">
+            <div><span class="ft-root">📦 example.zip</span></div>
+            <div>&nbsp;├─ <span class="ft-dir">📁 models_bedrock/</span>&nbsp; <span class="ft-file">← .geo.json модели</span></div>
+            <div>&nbsp;└─ <span class="ft-dir">📁 textures_icon/</span>&nbsp; <span class="ft-opt">← иконки (опционально)</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="color:var(--primary);font-weight:700;flex-shrink:0">3.</span>
+        <span style="color:var(--muted)">Все параметры <b style="color:var(--text)">display</b> из Java-моделей (scale, translation, rotation) автоматически переносятся в Bedrock .geo.json файлы.</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Version input -->
   <div class="card">
     <div class="card-title">Версия пака</div>
