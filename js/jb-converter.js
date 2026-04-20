@@ -161,8 +161,10 @@
             try {
               var javaModel = JSON.parse(await javaModelFile.async('string'));
               if (javaModel.display) {
-                geoJson.display = javaModel.display;
-                jbLog('INFO', 'models/entity/<b>' + escHtml(mrel) + '</b> — display из Java модели добавлен', 'info');
+                if (Array.isArray(geomArr) && geomArr[0]) {
+                  geomArr[0].item_display_transforms = javaModel.display;
+                }
+                jbLog('INFO', 'models/entity/<b>' + escHtml(mrel) + '</b> — item_display_transforms из Java модели добавлен', 'info');
               }
             } catch(e) {
               jbLog('WARN', '<b>' + escHtml(modelName) + '</b>: ошибка чтения Java модели — ' + escHtml(e.message), 'warn');
