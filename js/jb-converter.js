@@ -155,7 +155,8 @@
             geomArr[0].description.identifier = 'geometry.' + modelName;
           }
 
-          // Inject display block from corresponding Java model
+          // Read Java model: item_display_transforms + animation params from display.head
+          var jbHeadY = 0, jbBoneScale = null;
           var javaModelFile = javaZip.file(javaRoot + 'assets/minecraft/models/custom/' + modelName + '.json');
           if (javaModelFile) {
             try {
@@ -164,7 +165,16 @@
                 if (Array.isArray(geomArr) && geomArr[0]) {
                   geomArr[0].item_display_transforms = javaModel.display;
                 }
-                jbLog('INFO', 'models/entity/<b>' + escHtml(mrel) + '</b> — item_display_transforms из Java модели добавлен', 'info');
+                jbLog('INFO', 'models/entity/<b>' + escHtml(mrel) + '</b> — item_display_transforms добавлен', 'info');
+                var head = javaModel.display.head;
+                if (head) {
+                  jbHeadY = (head.translation && typeof head.translation[1] === 'number') ? head.translation[1] : 0;
+                  if (head.scale && head.scale[0] !== undefined && head.scale[0] !== 1) {
+                    var rawScale = head.scale[0] / 1.6;
+                    var rounded  = Math.round(rawScale * 10) / 10;
+                    if (rounded !== 1) jbBoneScale = rounded;
+                  }
+                }
               }
             } catch(e) {
               jbLog('WARN', '<b>' + escHtml(modelName) + '</b>: ошибка чтения Java модели — ' + escHtml(e.message), 'warn');
@@ -182,10 +192,12 @@
             jbLog('WARN', '<b>' + escHtml(modelName) + '</b>: корневые кости не найдены', 'warn');
           }
 
-          // animations
-          var animKey   = 'animation.' + modelName + '.head_offset';
+          // animations — position и scale из display.head джава-модели
+          var animKey  = 'animation.' + modelName + '.head_offset';
+          var boneData = { position: [0, 24 + jbHeadY, 0] };
+          if (jbBoneScale !== null) boneData.scale = [jbBoneScale, jbBoneScale, jbBoneScale];
           var animBones = {};
-          rootBones.forEach(function(bone) { animBones[bone] = { position: [0, 20.0, 0] }; });
+          rootBones.forEach(function(bone) { animBones[bone] = boneData; });
           outZip.file('test_pack/animations/' + modelName + '.animation.json', JSON.stringify({
             format_version: "1.8.0",
             animations: { [animKey]: { loop: true, bones: animBones } }
